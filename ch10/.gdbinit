@@ -1,8 +1,9 @@
 break main
 break main.exit
 
-break search
-break search.binsearch
+break binsearch
+break binsearch.loop
+break binsearch.found
 
 #break fill
 
@@ -10,6 +11,5 @@ break search.binsearch
 #break printarr.bitstuff
 #break printarr.lastchar
 
-
-#disp/24wd 0x602010
+disp/24wd 0x602010
 

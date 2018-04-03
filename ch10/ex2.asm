@@ -1,5 +1,5 @@
 ;*****************************************************************************;
-; Ex 2                                                                        ;
+; Ex 2 (pg 127)                                                               ;
 ;                                                                             ;
 ; Write a program to use qsort to sort an array of random integers            ;
 ; and use a binary search function to search for numbers in the array.        ;
@@ -60,20 +60,23 @@ main:
     mov rcx, compare
     call qsort
 
-    ; search the array
+
+.readnum:
     mov rdi, [rsp+.array]
     mov esi, [rsp+.arrsz]
     call get_num_to_search
 
     cmp rax, 0
-    jl .exit
-
+    jl .exitok
+    
+    ; search the array
     mov rdi, [rsp+.array]
     mov esi, [rsp+.arrsz]
-    call binsearch 
+    mov edx, eax
+    call binsearch
 
-    xor eax, eax
-    jmp main.exit
+    jmp .readnum
+
 
 .needsargs:
     section .rodata
@@ -85,6 +88,12 @@ main:
     call fprintf
 
     mov eax, 1
+    jmp .exit
+
+
+.exitok:
+    xor eax, eax
+
 
 .exit:
     leave
@@ -124,6 +133,7 @@ fill:
 
     xor ebx, ebx        ; index
 
+
 .loop:
     call rand
 
@@ -139,6 +149,10 @@ fill:
     ret
 
 
+;******************************************************************************;
+; Comparison function for qsort                                                ;
+; Returns difference to numbers passed in                                      ;
+;******************************************************************************;
 compare:
     mov eax, [rdi]
     sub eax, [rsi]
@@ -149,13 +163,13 @@ compare:
 ;******************************************************************************;
 ; get_num_to_search:                                                           ;
 ;   gets a number to search for with scanf                                     ;
-;                                                                              ; 
+;                                                                              ;
 ; input:                                                                       ;
-;   rdi: array pointer                                                         ; 
-;   esi: array size                                                            ; 
-;                                                                              ; 
-; returns:                                                                     ; 
-;   index of found number or -1                                                ; 
+;   rdi: array pointer                                                         ;
+;   esi: array size                                                            ;
+;                                                                              ;
+; returns:                                                                     ;
+;   index of found number or -1                                                ;
 ;******************************************************************************;
 get_num_to_search:
     push rbp
@@ -198,9 +212,15 @@ get_num_to_search:
     call scanf
 
     test eax, eax               ; test return value of scanf
+    mov rax, -1
     jz .done                    ; if zero, there was no parsable input
 
-    mov rbx, [rsp]
+    mov rax, [rsp]
+
+
+.done:
+    leave
+    ret
 
 
 ;******************************************************************************;
@@ -209,29 +229,75 @@ get_num_to_search:
 ;                                                                              ;
 ; input:                                                                       ;
 ;   rdi: array pointer                                                         ;
-;   esi: array size                                                            ;
+;   rsi: array size                                                            ;
 ;                                                                              ;
 ; returns:                                                                     ;
 ;   index of found number or -1                                                ;
 ;******************************************************************************;
 binsearch:
-    mov rcx, [rbp+.arrsz]       ; rcx is index
+    nop
 
-    mov rdi, [rbp+.array]       ; rdi is low
-    lea rsi, [rdi+rcx*4] ; rsi is high
+    push rbp
+    mov rbp, rsp
+    sub rsp, 16
 
-    shr rcx, 1                  ; rcs is now mid
+    dec esi                     ; esi is high index
+    xor ebx, ebx                ; ebx is low index
+    mov ecx, esi                ; ecx is mid index
 
-    mov eax, [rdi+rcx*4]
-    cmp eax, [rsp]
+    shr ecx, 1                  ; (high - low) / 2
+
+.loop:
+    ; calculate midpoint
+    mov ecx, esi
+    sub ecx, ebx
+    shr ecx, 1
+    add ecx, ebx
+
+    mov eax, [rdi+rcx*4]        ; load number at midpoint
+    cmp edx, eax
 
     jl .lessthan
     jg .morethan
 
-    ; must be equal!
+.found:
+    section .rodata
+    .foundmsg db "Yay! %d is at index %d!", 10, 10, 0
+    section .text
+
+    lea rdi, [.foundmsg]
+    mov esi, edx
+    mov edx, ecx
+    call printf
+
+    jmp .done
 
 .lessthan:
+    dec ecx     
+    mov esi, ecx
+
+    cmp ebx, esi
+    jg .notfound
+
+    jmp .loop
+
 .morethan:
+    inc ecx
+    mov ebx, ecx
+
+    cmp ebx, esi
+    jg .notfound
+
+    jmp .loop
+
+.notfound:
+    section .rodata
+    .notfoundmsg db "Couldn't find %d :(", 10, 10, 0
+    section .text
+
+    lea rdi, [.notfoundmsg]
+    mov esi, edx
+    call printf
 
 .done
     leave

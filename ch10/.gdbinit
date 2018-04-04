@@ -1,9 +1,13 @@
 break main
-break main.exit
+break main.printadler
 
-break binsearch
-break binsearch.loop
-break binsearch.found
+break adler32
+
+#break main.exit
+
+#break binsearch
+#break binsearch.loop
+#break binsearch.found
 
 #break fill
 
@@ -11,5 +15,5 @@ break binsearch.found
 #break printarr.bitstuff
 #break printarr.lastchar
 
-disp/24wd 0x602010
+#disp/24wd 0x602010
 

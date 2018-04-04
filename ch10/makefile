@@ -1,4 +1,4 @@
-phony: 2
+phony: 4
 
 fill:
 	yasm -f elf64 -g dwarf2 fillarray.asm -l fillarray.lst
@@ -25,6 +25,16 @@ at:
 	yasm -f elf64 -g dwarf2 ex2.asm -l ex2.lst
 	#nasm -f elf64 -F dwarf -g ex2.asm
 	gcc -o ex2 ex2.o
+
+3:
+	yasm -f elf64 -g dwarf2 ex3.asm -l ex3.lst
+	#nasm -f elf64 -F dwarf -g ex2.asm
+	gcc -o ex3 ex3.o
+
+4:
+	yasm -f elf64 -g dwarf2 ex4.asm -l ex4.lst
+	#nasm -f elf64 -F dwarf -g ex2.asm
+	gcc -o ex4 ex4.o
 
 re:
 	yasm -f elf64 -g dwarf2 readenv.asm 

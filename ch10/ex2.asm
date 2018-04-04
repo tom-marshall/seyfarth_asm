@@ -15,11 +15,15 @@
 
 
 section .text
-    extern fprintf, stderr, printf, putchar     ; output
-    extern scanf                                ; input
+    ; i/o
+    extern fprintf, stderr, printf, putchar
+    extern scanf
 
-    extern rand, srand, time                    ; for random numbers
-    extern atol, malloc, qsort                  ; other
+    ; for random numbers
+    extern rand, srand, time
+
+    ; other
+    extern atol, malloc, qsort
 
     ; exported symbols
     global main, compare
@@ -37,16 +41,30 @@ main:
     cmp edi, 2
     jl .needsargs
 
-    call readsize           ; parse command line supplied long
+    call readsize                   ; parse command line supplied long
 
-    cmp rax, 0
+    cmp rax, 0                      ; make sure we have valid input
     jle .exit
 
-    mov rdi, rax            ; amount to malloc
+    mov rdi, rax                    ; amount to malloc
     mov [rsp+.arrsz], rdi
-    shl rdi, 2
-    call malloc
-    mov [rsp+.array], rax
+    shl rdi, 2                      ; mult by 4 for sizeof(int)
+    call malloc                     ; grab some memory
+
+    test eax, eax
+    jg .malloc_ok
+
+    ; malloc failed
+    section .rodata
+    .errmsg: db "Could not allocate memory", 10, 0
+    section .text
+
+    mov rdi, [stderr]
+    lea rsi, [.errmsg]
+    call fprintf
+
+.malloc_ok:
+    mov [rsp+.array], rax           ; store the returned pointer
 
     ; fill the array
     mov rdi, rax
@@ -67,8 +85,8 @@ main:
     call get_num_to_search
 
     cmp rax, 0
-    jl .exitok
-    
+    jl .exit_ok
+
     ; search the array
     mov rdi, [rsp+.array]
     mov esi, [rsp+.arrsz]
@@ -80,18 +98,18 @@ main:
 
 .needsargs:
     section .rodata
-    .errmsg: db "Not enough arguments", 10, 0
+    .badmalloc: db "Not enough arguments", 10, 0
     section .text
 
     mov rdi, [stderr]
-    lea rsi, [.errmsg]
+    lea rsi, [.badmalloc]
     call fprintf
 
     mov eax, 1
     jmp .exit
 
 
-.exitok:
+.exit_ok:
     xor eax, eax
 
 
@@ -113,7 +131,7 @@ main:
 readsize:
     push rbp
 
-    mov rdi, [rsi+8]    ; pointer into argv array
+    mov rdi, [rsi+8]                ; pointer into argv array
     call atol
 
     pop rbp
@@ -121,23 +139,23 @@ readsize:
 
 
 fill:
-    mov r12, rdi        ; pointer to array
-    mov r13, rsi        ; size
-    mov r14, 1000       ; divisor for modulo
+    mov r12, rdi                    ; pointer to array
+    mov r13, rsi                    ; size
+    mov r14, 1000                   ; divisor for modulo
 
-    xor edi, edi        ; NULL
-    call time           ; time(NULL) for random seed
+    xor edi, edi                    ; NULL parameter for time
+    call time                       ; time(NULL) for random seed
 
-    mov rdi, rax        ; input for srand = time(NULL)
-    call srand          ; seed random number generator
+    mov rdi, rax                    ; input for srand = time(NULL)
+    call srand                      ; seed random number generator
 
-    xor ebx, ebx        ; index
+    xor ebx, ebx                    ; index
 
 
 .loop:
     call rand
 
-    xor edx, edx                ; clear high byte for division
+    xor edx, edx                    ; clear high byte for division
     div r14
 
     mov [r12+rbx*4], edx
@@ -211,9 +229,9 @@ get_num_to_search:
     xor eax, eax
     call scanf
 
-    test eax, eax               ; test return value of scanf
+    test eax, eax                   ; test return value of scanf
     mov rax, -1
-    jz .done                    ; if zero, there was no parsable input
+    jz .done                        ; if zero, there was no parsable input
 
     mov rax, [rsp]
 
@@ -235,17 +253,15 @@ get_num_to_search:
 ;   index of found number or -1                                                ;
 ;******************************************************************************;
 binsearch:
-    nop
-
     push rbp
     mov rbp, rsp
     sub rsp, 16
 
-    dec esi                     ; esi is high index
-    xor ebx, ebx                ; ebx is low index
-    mov ecx, esi                ; ecx is mid index
+    dec esi                         ; esi is high index
+    xor ebx, ebx                    ; ebx is low index
+    mov ecx, esi                    ; ecx is mid index
 
-    shr ecx, 1                  ; (high - low) / 2
+    shr ecx, 1                      ; (high - low) / 2
 
 .loop:
     ; calculate midpoint
@@ -254,7 +270,7 @@ binsearch:
     shr ecx, 1
     add ecx, ebx
 
-    mov eax, [rdi+rcx*4]        ; load number at midpoint
+    mov eax, [rdi+rcx*4]            ; load number at midpoint
     cmp edx, eax
 
     jl .lessthan
@@ -273,7 +289,7 @@ binsearch:
     jmp .done
 
 .lessthan:
-    dec ecx     
+    dec ecx
     mov esi, ecx
 
     cmp ebx, esi
@@ -326,35 +342,33 @@ printarr:
     xor rbx, rbx
 
 .loop:
-    nop
-
     lea rdi, [.pfmt]
     mov esi, [r12+rbx*4]
     xor eax, eax
     call printf
 
     ; compute x & (x - 1)
-    mov dl, bl          ; copy current index to dl
-    add dl, 5           ; start one past 4
-    mov dh, dl          ; duplicate dl to dh
-    neg dl              ; -x
-    and dl, dh          ; x & (-x)
+    mov dl, bl                      ; copy current index to dl
+    add dl, 5                       ; start one past 4
+    mov dh, dl                      ; duplicate dl to dh
+    neg dl                          ; -x
+    and dl, dh                      ; x & (-x)
 
-    and dl, 0x04        ; only interested in bit 2
-    shr dl, 2           ; convert from 4 to 1 if bit 2 set
+    and dl, 0x04                    ; only interested in bit 2
+    shr dl, 2                       ; convert from 4 to 1 if bit 2 set
 
-    mov edi, 0x09       ; load tab character for putchar
-    add dil, dl         ; add 1 to tab, makes it a newline (0x09 to 0x0a)
-    call putchar        ; print tab or newline
+    mov edi, 0x09                   ; load tab character for putchar
+    add dil, dl                     ; add 1 to tab, makes it a newline (0x09 to 0x0a)
+    call putchar                    ; print tab or newline
 
-    inc rbx             ; next interation
+    inc rbx                         ; next interation
     cmp rbx, r13
     jl .loop
 
-    cmp al, 0x0a        ; if we've just printed a carriage return
-    jz .done            ; then we're done
+    cmp al, 0x0a                    ; if we've just printed a carriage return
+    jz .done                        ; then we're done
 
-    mov rdi, 0x0a       ; else print a carriage return
+    mov rdi, 0x0a                   ; else print a carriage return
     call putchar
 
 .done:

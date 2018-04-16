@@ -14,7 +14,7 @@
 ;       789123456,
 ;       891234567
 ;   };
-;   
+;
 ;   int hash (unsigned char *s)
 ;   {
 ;       unsigned long h = 0;
@@ -45,7 +45,7 @@
 ; this could be done using
 ;
 ;    for (i = 0; i < 99991; i++) {
-;        k = collisions[i] ;
+;        k = collisions[i];
 ;        if (k > 999) k = 999;
 ;        count[k] ++;
 ;
@@ -58,14 +58,122 @@
 
 
 section .rodata
-    multipliers: dd 123456789, 234567891, 345678912, 456789123,
-                 dd 567891234, 678912345, 789123456, 891234567
+    multipliers: dd   123456789, 234567891, 345678912, 456789123,
+                 dd   567891234, 678912345, 789123456, 891234567
+
+    teststr      db   "Hello world!", 0
+
+
+section .bss
+    hashes      resd  9999991 
 
 
 section .text
+    extern printf, scanf
+
     global main
 
 main:
+    push rbp
+    mov rbp, rsp
+
+    sub rsp, 80
+
+    section .rodata
+    .inputfmt   db   "Enter a 79 character string: ", 0
+    .scanffmt   db   "%79s", 0
+    section .text
+
+.nextinput
+    lea rdi, [.inputfmt]
     xor eax, eax
+    call printf
+
+.processloop:
+    lea rdi, [.scanffmt]
+    mov rsi, rsp
+    call scanf
+
+    cmp al, 1                     ; make sure we have valid input
+    jnz .printresults
+
+    lea rdi, [rsp]
+    call hash
+
+    inc dword [hashes+rax*4]
+    jmp .processloop
+
+.printresults:
+    section .rodata
+    .resultfmt  db   "Element %d, count %d", 10, 0
+    section .text
+
+    xor ebx, ebx
+
+; @ 603dec
+
+.printloop:
+    mov edx, dword [hashes+rbx*4]
+    test edx, edx
+    jz .skipprint
+
+    lea rdi, [.resultfmt]
+    mov esi, ebx
+    xor eax, eax
+    call printf
+
+.skipprint:
+    inc ebx
+    cmp ebx, 99991
+    jb .printloop
+
+
+.done:
+    xor eax, eax
+    leave
+    ret
+
+
+;-------------------------------------------------------------------------------
+; hash:
+; prototype: hash (unsigned char *s)
+;
+; input:
+;   rdi: pointer to c-style string
+;
+; registers used:
+;   rdx: hash
+;   ecx: index
+;
+; returns 32 bit hash
+;-------------------------------------------------------------------------------
+hash:
+    xor eax, eax
+    xor ecx, ecx
+    xor edx, edx
+
+    mov rsi, rdi
+
+.loop:
+    lodsb                   ; grab next character
+    test al, al             ; test for null terminator
+    jz .endloop             ; if so, end
+
+    and ecx, 0x07           ; mod 8
+    imul eax, [multipliers+rcx*4]   ; multiply by constant in array
+    add rdx, rax
+
+    xor eax, eax            ; reset eax for next lodsb
+    inc ecx
+    jmp .loop
+
+.endloop:
+    mov rax, rdx            ; running has is in rdx
+    xor edx, edx            ; clear rdx for divide
+
+    mov rcx, 99991          ; 99990 buckets
+    div rax, rcx            ; take mod
+    mov eax, edx            ; move the remainder into eax for return
+
     ret
 

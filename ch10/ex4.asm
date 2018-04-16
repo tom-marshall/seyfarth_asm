@@ -61,11 +61,9 @@ section .rodata
     multipliers: dd   123456789, 234567891, 345678912, 456789123,
                  dd   567891234, 678912345, 789123456, 891234567
 
-    teststr      db   "Hello world!", 0
-
 
 section .bss
-    hashes      resd  9999991 
+    hashes      resd  99991
 
 
 section .text
